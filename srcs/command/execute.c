@@ -6,66 +6,122 @@
 /*   By: adouieb <adouieb@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 10:41:29 by adouieb           #+#    #+#             */
-/*   Updated: 2026/01/28 10:42:42 by adouieb          ###   ########.fr       */
+/*   Updated: 2026/02/02 16:53:58 by adouieb          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
+#include "libft_gnl.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-static t_i8	**format_command_opts(t_dstr_arr command_opts)
+static void	close_other_fds(void *command, void *target)
 {
-	size_t	i;
-	t_i8	**res;
-	t_dstr	quote_trimmed;
+	t_command	*target_;
+	t_command	*command_;
 
-	res = malloc(sizeof(t_i8 *) * (command_opts.len + 1));
-	if (res == NULL)
-		return (NULL);
-	i = 0;
-	while (i < command_opts.len)
+	command_ = (t_command *)command;
+	target_ = (t_command *)target;
+	if (command_ != target_)
 	{
-		quote_trimmed = str_trim(&command_opts.strs[i], cstr("'"));
-		if (quote_trimmed.s == NULL)
-			return (free(res), NULL);
-		1 && (res[i] = quote_trimmed.s, ++i);
+		if (command_->in_fd >= 0)
+			close(command_->in_fd);
+		if (command_->out_fd >= 0)
+			close(command_->out_fd);
 	}
-	res[i] = NULL;
-	return (res);
 }
 
-static void	execute_command(t_command *command)
+static void	on_redirection_failed(t_pipes *pipes, t_command *command)
 {
-	t_dstr				command_path;
-	t_i8				**command_opts;
-	t_command_content	*command_content;
+	perror("Dup2 failed");
+	if (command->in_fd >= 0)
+		close(command->in_fd);
+	if (command->out_fd >= 0)
+		close(command->out_fd);
+	free_pipes(pipes, free_command);
+	exit(EXIT_FAILURE);
+}
 
-	command_content = command->content;
-	dup2(command_content->input_fd, STDIN_FILENO);
-	close(command_content->input_fd);
-	dup2(command_content->output_fd, STDOUT_FILENO);
-	close(command_content->output_fd);
-	command_path = command_content->command;
-	command_opts = format_command_opts(command_content->command_opts);
+static t_command	*fill_heredoc_pipe(t_command *command)
+{
+	t_readers		readers;
+	t_cstr			delimiter;
+	t_dstr			stdin_input;
+	t_reader_node	*reader_node;
+
+	readers = lst_();
+	reader_node = reader_(STDIN_FILENO);
+	if (reader_node == NULL)
+		return (NULL);
+	readers = lst_insert(&readers, (t_node *)reader_node, 0);
+	delimiter = cstr(command->command.s);
+	stdin_input = get_next_line(STDIN_FILENO, &readers, delimiter);
+	if (stdin_input.s == NULL)
+		return (free_lst(&readers, free_reader), NULL);
+	stdin_input = str_trim(&stdin_input, delimiter);
+	str_print(cstr_d(stdin_input), command->out_fd);
+	1 && (close(command->out_fd), command->out_fd = -1);
+	return (free_lst(&readers, free_reader), free_dstr(&stdin_input), command);
+}
+
+static void	children_process(t_pipes *pipes, t_command *command, t_i8 **env)
+{
+	t_i8	**command_opts;
+
+	lst_foreach(pipes->commands, close_other_fds, command);
+	if (dup2(command->in_fd, STDIN_FILENO) == -1)
+		on_redirection_failed(pipes, command);
+	if (command->in_fd >= 0)
+		close(command->in_fd);
+	if (dup2(command->out_fd, STDOUT_FILENO) == -1)
+		on_redirection_failed(pipes, command);
+	if (command->out_fd >= 0)
+		close(command->out_fd);
+	if (command->command.s == NULL)
+	{
+		free_pipes(pipes, free_command);
+		perror("Command not found");
+		exit(127);
+	}
+	command_opts = dstr_arr_unwrap(command->command_opts);
 	if (command_opts == NULL)
-		return ;
-	execve(command_path.s, command_opts, NULL);
+	{
+		free_pipes(pipes, free_command);
+		exit(EXIT_FAILURE);
+	}
+	execve(command->command.s, command_opts, env);
+	perror(command->command_opts.strs[0].s);
+	free_pipes(pipes, free_command);
+	exit(EXIT_FAILURE);
 }
 
-t_pipes	*execute_commands(t_pipes *pipes, size_t process_i, pid_t *pid)
+void	execute_command(t_pipes *pipes, t_command *command, t_i8 **env)
 {
-	t_command			*command;
-	t_command_content	*command_content;
+	pid_t	pid;
 
-	command = get(pipes->commands, process_i);
-	if (command == NULL)
-		return (free_pipes(pipes, free_command), NULL);
-	command_content = command->content;
-	*pid = fork();
-	if (*pid < 0)
-		return (free_pipes(pipes, free_command), NULL);
-	else if (*pid == 0)
-		execute_command(command);
-	close(command_content->input_fd);
-	close(command_content->output_fd);
-	return (pipes);
+	pid = fork();
+	if (pid < 0)
+	{
+		free_pipes(pipes, free_command);
+		perror("Fork failed");
+		exit(EXIT_FAILURE);
+	}
+	else if (pid == 0)
+	{
+		if (command->type == HEREDOC)
+		{
+			lst_foreach(pipes->commands, close_other_fds, command);
+			fill_heredoc_pipe(command);
+			free_pipes(pipes, free_command);
+			exit(EXIT_SUCCESS);
+		}
+		else
+			children_process(pipes, command, env);
+	}
+	command->pid = pid;
+	if (command->in_fd >= 0)
+		close(command->in_fd);
+	if (command->out_fd >= 0)
+		close(command->out_fd);
 }

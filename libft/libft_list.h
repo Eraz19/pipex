@@ -6,7 +6,7 @@
 /*   By: adouieb <adouieb@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/12/10 19:05:18 by adouieb           #+#    #+#             */
-/*   Updated: 2026/01/20 19:30:37 by adouieb          ###   ########.fr       */
+/*   Updated: 2026/01/29 21:25:20 by adouieb          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,7 +40,7 @@ t_lst	filter(t_lst lst, t_bool (*cmp)(void *, void *), void *context);
 
 t_lst	lst_insert(t_lst *lst, t_node *node, size_t index);
 
-void	lst_foreach(t_lst lst, void (*f)(void *));
 t_lst	lst_map(t_lst *lst, void *(*f)(void *), void (*del)(void *));
+void	lst_foreach(t_lst lst, void (*f)(void *, void *), void *context);
 
 #endif

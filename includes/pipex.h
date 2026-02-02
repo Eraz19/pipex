@@ -6,7 +6,7 @@
 /*   By: adouieb <adouieb@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 14:57:40 by adouieb           #+#    #+#             */
-/*   Updated: 2026/01/28 11:27:12 by adouieb          ###   ########.fr       */
+/*   Updated: 2026/02/02 17:55:16 by adouieb          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,32 +16,56 @@
 # include "libft_list.h"
 # include "libft_string.h"
 
-typedef struct t_command_content
+typedef enum e_command_type
 {
-	t_i32		input_fd;
-	t_i32		output_fd;
-	t_dstr		command;
-	t_dstr_arr	command_opts;
-}	t_command_content;
-typedef t_node	t_command;
-typedef t_lst	t_commands;
+	STD,
+	HEREDOC,
+}	t_command_type;
+
+typedef struct t_program_args
+{
+	size_t		argc;
+	t_i8		**envp;
+	const t_i8	**argv;
+}	t_program_args;
+
+typedef struct t_command
+{
+	pid_t			pid;
+	t_command_type	type;
+	t_i32			in_fd;
+	t_i32			out_fd;
+	t_dstr			command;
+	t_dstr_arr		command_opts;
+	t_i32			error_status;
+}	t_command;
+typedef t_node	t_command_node;
+typedef t_lst	t_command_lst;
+
 typedef struct t_pipes
 {
-	t_commands	commands;
-	t_dstr		input_file;
-	t_dstr		output_file;
+	t_command_lst	commands;
+	t_dstr			input_file;
+	t_dstr			output_file;
 }	t_pipes;
 
-t_command	*command_(void);
-void		free_command(void *command);
-t_pipes		*execute_commands(t_pipes *pipes, size_t process_i, pid_t *pid);
+void	printf_pipes(t_pipes *pipes);
 
-t_pipes		pipes_(void);
-void		free_pipes(t_pipes *pipes, void (*del)(void *));
-t_pipes		*setup_pipes(t_pipes *pipes, const t_i8 **envp);
+t_command_node	*command_node(void);
+void			free_command(void *command);
+void			wait_command(t_pipes *pipes);
+t_dstr_arr		tokenize_raw_command(t_cstr command);
+t_dstr			get_command_path(t_dstr command, t_i8 **env);
+t_bool			find_command_by_pid(void *command, void *pid);
+void			free_command_node(t_command_node **command_node);
+void			execute_command(t_pipes *pipes, t_command *command, t_i8 **env);
 
-t_pipes		*parse_args(t_pipes *res, size_t argc, const t_i8 **argv);
+t_pipes			pipes_(void);
+t_pipes			*setup_fds(t_pipes *res);
+t_pipes			*setup_pipes(t_pipes *res, t_program_args args);
+void			free_pipes(t_pipes *pipes, void (*del)(void *));
+t_pipes			*setup_commands(t_pipes *res, t_cstr_arr *args, t_i8 **env);
 
-t_dstr		get_binary_path(t_dstr command, const t_i8 **envp);
+extern t_i32	debug_fd;
 
 #endif

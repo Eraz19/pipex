@@ -6,7 +6,7 @@
 /*   By: adouieb <adouieb@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/12/10 19:05:18 by adouieb           #+#    #+#             */
-/*   Updated: 2026/01/26 14:05:56 by adouieb          ###   ########.fr       */
+/*   Updated: 2026/01/30 16:02:00 by adouieb          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,13 +43,17 @@ typedef struct t_cstring_arr
 
 t_cstr		cstr_d(t_dstr str);
 t_cstr		cstr(const t_i8 *s);
+
 t_cstr_arr	cstr_arr_s(size_t count);
+t_cstr_arr	cstr_arr_c(t_cstr_arr arr);
 t_cstr_arr	cstr_arr(const t_i8 **strs, size_t count);
 
 t_dstr		dstr_d(t_dstr str);
 t_dstr		dstr_c(t_cstr str);
 t_dstr		dstr_s(size_t size);
+
 t_dstr_arr	dstr_arr_s(size_t count);
+t_dstr_arr	dstr_arr_d(t_dstr_arr arr);
 t_dstr_arr	dstr_arr(t_i8 **strs, size_t count);
 
 void		free_dstr(t_dstr *str);
@@ -95,5 +99,10 @@ t_dstr		str_trim(t_dstr *str, t_cstr set);
 
 t_dstr_arr	str_arr_add_d(t_dstr_arr *arr, t_dstr str);
 t_cstr_arr	str_arr_add_c(t_cstr_arr *arr, t_cstr str);
+t_dstr_arr	str_arr_add_d_arr(t_dstr_arr *arr, t_dstr_arr *add_arr);
+t_cstr_arr	str_arr_add_c_arr(t_cstr_arr *arr, t_cstr_arr *add_arr);
+
+t_i8		**dstr_arr_unwrap(t_dstr_arr arr);
+const t_i8	**cstr_arr_unwrap(t_cstr_arr arr);
 
 #endif

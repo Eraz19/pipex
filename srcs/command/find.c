@@ -1,23 +1,23 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   constructor.c                                      :+:      :+:    :+:   */
+/*   find.c                                             :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: adouieb <adouieb@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/01/27 14:48:49 by adouieb           #+#    #+#             */
-/*   Updated: 2026/01/30 14:31:47 by adouieb          ###   ########.fr       */
+/*   Created: 2026/01/29 21:19:30 by adouieb           #+#    #+#             */
+/*   Updated: 2026/01/29 21:20:55 by adouieb          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 
-t_pipes	pipes_(void)
+t_bool	find_command_by_pid(void *command, void *pid)
 {
-	t_pipes	res;
+	pid_t		pid_;
+	t_command	command_;
 
-	res.commands = lst_();
-	res.input_file = dstr_s(0);
-	res.output_file = dstr_s(0);
-	return (res);
+	pid_ = *(pid_t *)pid;
+	command_ = *(t_command *)command;
+	return (command_.pid == pid_);
 }
